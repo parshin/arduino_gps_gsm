@@ -17,13 +17,9 @@ int x;
 int onModulePin = 2;
 int led = 13;
 boolean logg = true;
-boolean TCP_Connected;
 boolean first_loop = true;
 unsigned long prevMillis = 0;
 unsigned long currMillis;
-
-// GPRS
-boolean gprsinit = false;
 
 // GPS
 //bool newdata = false;
@@ -88,7 +84,7 @@ void setup() {
 void InitGPRS() { 
   
   if (logg) {
-    debug.println("initiate GPRS...");
+    debug.println("Setting up GPRS...");
   }  
 
   if (logg) {debug.println("AT&k3...");}
@@ -336,7 +332,6 @@ void sendSMSGPS() {
 
 //**************************************************************
 void SendGPSDataToServer(boolean nospd) {
-  if (logg) {debug.println("try sending gps data...");}
 
   GetGPSData(gps);
 
@@ -346,7 +341,8 @@ void SendGPSDataToServer(boolean nospd) {
     prevMillis = millis();
     return;
   }
- 
+  
+  if (logg) {debug.println("trying sending gps data...");} 
   if (logg) {debug.println("AT+KUDPSND..."); }
   Serial.print("AT+KUDPSND=1,");
   Serial.write(34);
@@ -387,7 +383,7 @@ void SendGPSDataToServer(boolean nospd) {
 //  getSerialChars();
 
   prevMillis = millis();
-  if (logg) {debug.println("data sended.");}
+  if (logg) {debug.println("data sending complete.");}
 }
 
 //**************************************************************
