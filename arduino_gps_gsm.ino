@@ -338,6 +338,7 @@ void SendGPSDataToServer(boolean nospd) {
   //nospd = true;
   
   if (spd < 5 && !nospd) {
+    if (logg) {debug.println("speed is less then 5 km/h");} 
     prevMillis = millis();
     return;
   }
