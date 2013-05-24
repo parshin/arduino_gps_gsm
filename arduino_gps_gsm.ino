@@ -155,51 +155,50 @@ int8_t sendATcommand2(char* ATcommand, char* expected_answer1, char* expected_an
 
 //**************************************************************
 void InitGPRS() { 
-  
-  if (logg) {
-    debug.println("Setting up GPRS...");
-  }  
 
-  if (logg) {debug.println("AT&k3...");}
+  if (logg) {debug.println("AT&k3 - Hardware flow control activation.");}
   Serial.println("AT&k3");
   delay(1000); 
   getSerialChars();
 
-  if (logg) {debug.println("AT+KCNXCFG...");}
-  Serial.print("AT+KCNXCFG=0,");
-  Serial.write(34);
-  Serial.print("GPRS");
-  Serial.write(34);
-  Serial.print(",");
-  Serial.write(34);
-  Serial.print("internet");
-  Serial.write(34);
-  Serial.print(",");
-  Serial.write(34);
-  Serial.write(34);
-  Serial.print(",");
-  Serial.write(34);
-  Serial.write(34);
-  Serial.print(",");
-  Serial.write(34);
-  Serial.print("0.0.0.0");
-  Serial.write(34);
-  Serial.print(",");
-  Serial.write(34);
-  Serial.print("0.0.0.0");
-  Serial.write(34);
-  Serial.print(",");
-  Serial.write(34);
-  Serial.print("0.0.0.0");
-  Serial.write(34);
-  Serial.println();
-  delay(2000);
-  getSerialChars();
-
-  if (logg) {debug.println("AT+KUDPCFG..."); } 
-  Serial.println("AT+KUDPCFG=0,0");
-  delay(4000);
-  getSerialChars();  
+  if (logg) {debug.println("AT+KCNXCFG - Setting GPRS paraameters (APN, login...).");}
+//  Serial.print("AT+KCNXCFG=0,");
+//  Serial.write(34);
+//  Serial.print("GPRS");
+//  Serial.write(34);
+//  Serial.print(",");
+//  Serial.write(34);
+//  Serial.print("internet");
+//  Serial.write(34);
+//  Serial.print(",");
+//  Serial.write(34);
+//  Serial.write(34);
+//  Serial.print(",");
+//  Serial.write(34);
+//  Serial.write(34);
+//  Serial.print(",");
+//  Serial.write(34);
+//  Serial.print("0.0.0.0");
+//  Serial.write(34);
+//  Serial.print(",");
+//  Serial.write(34);
+//  Serial.print("0.0.0.0");
+//  Serial.write(34);
+//  Serial.print(",");
+//  Serial.write(34);
+//  Serial.print("0.0.0.0");
+//  Serial.write(34);
+//  Serial.println();
+//  delay(2000);
+//  getSerialChars();
+  
+  while(sendATcommand2("AT+KCNXCFG=0,\"GPRS\",\"internet\",\"\",\"\",\"0.0.0.0\",\"0.0.0.0\",\"0.0.0.0\"", "OK", "OK", 2000) == 0);
+  
+  if (logg) {debug.println("AT+KUDPCFG - Creating a new UDP socket."); } 
+//  Serial.println("AT+KUDPCFG=0,0");
+//  delay(4000);
+//  getSerialChars();  
+  while(sendATcommand2("AT+KUDPCFG=0,0", "OK", "OK", 4000) == 0);
   
 //  if (logg) {debug.println("close opened connections...");}
 //  Serial.println("AT+KUDPCLOSE=1");
@@ -407,7 +406,7 @@ void SendGPSDataToServer(boolean nospd) {
 
   GetGPSData(gps);
 
-  //nospd = true;
+  nospd = true;
   
   if (spd < 5 && !nospd) {
     if (logg) {debug.println("speed is less then 5 km/h");} 
@@ -415,16 +414,18 @@ void SendGPSDataToServer(boolean nospd) {
     return;
   }
   
-  if (logg) {debug.println("trying sending gps data...");} 
-  if (logg) {debug.println("AT+KUDPSND..."); }
-  Serial.print("AT+KUDPSND=1,");
-  Serial.write(34);
-  Serial.print("87.254.138.72");
-  Serial.write(34);
-  Serial.print(",30080");
-  Serial.println(",70");
-  delay(4000);
-  getSerialChars();
+  if (logg) {debug.println("trying connect to server...");} 
+  //if (logg) {debug.println("AT+KUDPSND..."); }
+//  Serial.print("AT+KUDPSND=1,");
+//  Serial.write(34);
+//  Serial.print("87.254.138.72");
+//  Serial.write(34);
+//  Serial.print(",30080");
+//  Serial.println(",70");
+//  delay(4000);
+//  getSerialChars();
+
+  while(sendATcommand2("AT+KUDPSND=1,\"87.254.138.72\",30080,70", "OK", "CONNECT", 4000) == 0);
 
   if (logg) {debug.println("sending udp data..."); }
   Serial.print("GET /test.php?lat=");
