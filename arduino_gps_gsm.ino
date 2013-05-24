@@ -10,12 +10,14 @@
 #include <TinyGPS.h>
 #define maxLength 256
 
+int8_t answer;
+
 String inData = String(maxLength);
 char data[maxLength];
 char phone_number[]="+79222620280";
 int x;
 int onModulePin = 2;
-int led = 13;
+int heater = 13;
 boolean logg = true;
 boolean first_loop = true;
 unsigned long prevMillis = 0;
@@ -37,14 +39,41 @@ SoftwareSerial debug = SoftwareSerial(11, 10);
 
 //**************************************************************
 void setup() {
-  // GSM
-  Serial.begin(9600);
-  delay(2000);
-    
   // Debug port
   debug.begin(9600);
   delay(200);
+
+  // GSM <--
+  pinMode(onModulePin, OUTPUT);
+  pinMode(heater, OUTPUT);
+  Serial.begin(9600);
+  if (logg) {
+    debug.println("Starting...");
+  }
   
+  power_on();
+  
+  delay(3000);
+
+  if (logg) {
+    debug.println("Connecting to the GSM network...");
+  }
+
+  while(sendATcommand2("AT+CREG?", "+CREG: 0,1", "+CREG: 0,5", 1000) == 0);
+  
+  Serial.println("AT+CLIP=1");
+  delay(1000);
+  Serial.println("AT+CMGF=1");
+  delay(1000);
+  Serial.println("AT+CNMI=2,2,0,0,0");
+  delay(1000);
+
+  if (logg) {
+    debug.println("Connected to the GSM network...");
+  }
+  
+  // -->
+
   // GPS
   if (logg) {
     debug.println("Setting up GPS...");
@@ -55,29 +84,73 @@ void setup() {
   }  
   delay(200);
 
-  pinMode(led, OUTPUT);
-  pinMode(onModulePin, OUTPUT);
-
   HeaterStop();
-  if (logg) {
-    debug.println("Starting GSM module...");
-  }
-  switchModule();
-  for (int i=0;i < 5;i++){
-      delay(4000);
-  }
-  Serial.println("AT+CLIP=1");
-  delay(1000);
-  Serial.println("AT+CMGF=1");
-  delay(1000);
-  Serial.println("AT+CNMI=2,2,0,0,0");
-  delay(1000);
    
   InitGPRS();
   
   if (logg) {
     debug.println("Started!");
   }  
+}
+
+//**************************************************************
+void power_on(){
+
+    uint8_t answer=0;
+    
+    // checks if the module is started
+    answer = sendATcommand2("AT", "OK", "OK", 2000);
+    if (answer == 0)
+    {
+        // power on pulse
+        digitalWrite(onModulePin,HIGH);
+        delay(3000);
+        digitalWrite(onModulePin,LOW);
+    
+        // waits for an answer from the module
+        while(answer == 0){     // Send AT every two seconds and wait for the answer
+            answer = sendATcommand2("AT", "OK", "OK", 2000);    
+        }
+    }
+    
+}
+
+//**************************************************************
+int8_t sendATcommand2(char* ATcommand, char* expected_answer1, char* expected_answer2, unsigned int timeout){
+
+    uint8_t x=0,  answer=0;
+    char response[100];
+    unsigned long previous;
+
+    memset(response, '\0', 100);    // Initialize the string
+
+    delay(100);
+
+    while( Serial.available() > 0) Serial.read();    // Clean the input buffer
+
+    Serial.println(ATcommand);    // Send the AT command 
+
+    x = 0;
+    previous = millis();
+
+    // this loop waits for the answer
+    do{
+        if(Serial.available() != 0){    // if there are data in the UART input buffer, reads it and checks for the asnwer
+            response[x] = Serial.read();
+            x++;
+            if (strstr(response, expected_answer1) != NULL)    // check if the desired answer 1  is in the response of the module
+            {
+                answer = 1;
+            }
+            else if (strstr(response, expected_answer2) != NULL)    // check if the desired answer 2 is in the response of the module
+            {
+                answer = 2;
+            }
+        }
+    }
+    while((answer == 0) && ((millis() - previous) < timeout));    // Waits for the asnwer with time out
+
+    return answer;
 }
 
 //**************************************************************
@@ -222,12 +295,12 @@ void switchModule(){
 
 //**************************************************************
 void HeaterStart() {
-  digitalWrite(led, HIGH);
+  digitalWrite(heater, HIGH);
 }
 
 //**************************************************************
 void HeaterStop() {
-  digitalWrite(led, LOW);
+  digitalWrite(heater, LOW);
   MsTimer2::stop();
   if (logg) {debug.println("Heater stop.");}
 
@@ -259,8 +332,7 @@ void getSerialChars() {
 }
 
 //**************************************************************
-static bool feedgps()
-{
+static bool feedgps(){
   while (nss.available())
   {
     if (gps.encode(nss.read()))
