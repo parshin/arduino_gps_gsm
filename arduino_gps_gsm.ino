@@ -162,50 +162,11 @@ void InitGPRS() {
   getSerialChars();
 
   if (logg) {debug.println("AT+KCNXCFG - Setting GPRS paraameters (APN, login...).");}
-//  Serial.print("AT+KCNXCFG=0,");
-//  Serial.write(34);
-//  Serial.print("GPRS");
-//  Serial.write(34);
-//  Serial.print(",");
-//  Serial.write(34);
-//  Serial.print("internet");
-//  Serial.write(34);
-//  Serial.print(",");
-//  Serial.write(34);
-//  Serial.write(34);
-//  Serial.print(",");
-//  Serial.write(34);
-//  Serial.write(34);
-//  Serial.print(",");
-//  Serial.write(34);
-//  Serial.print("0.0.0.0");
-//  Serial.write(34);
-//  Serial.print(",");
-//  Serial.write(34);
-//  Serial.print("0.0.0.0");
-//  Serial.write(34);
-//  Serial.print(",");
-//  Serial.write(34);
-//  Serial.print("0.0.0.0");
-//  Serial.write(34);
-//  Serial.println();
-//  delay(2000);
-//  getSerialChars();
   
   while(sendATcommand2("AT+KCNXCFG=0,\"GPRS\",\"internet\",\"\",\"\",\"0.0.0.0\",\"0.0.0.0\",\"0.0.0.0\"", "OK", "OK", 2000) == 0);
   
   if (logg) {debug.println("AT+KUDPCFG - Creating a new UDP socket."); } 
-//  Serial.println("AT+KUDPCFG=0,0");
-//  delay(4000);
-//  getSerialChars();  
   while(sendATcommand2("AT+KUDPCFG=0,0", "OK", "OK", 4000) == 0);
-  
-//  if (logg) {debug.println("close opened connections...");}
-//  Serial.println("AT+KUDPCLOSE=1");
-//  delay(1000);
-//  getSerialChars();
-//
-//  if (logg) {debug.println("opened connections closed!");}    
   
   if (logg) {debug.println("GPRS initiated!");}  
 
@@ -279,7 +240,7 @@ void loop() {
     first_loop = false;
   }
   
-  if (currMillis - prevMillis > 60000) {
+  if (currMillis - prevMillis > 30000) {
     prevMillis = currMillis;
     SendGPSDataToServer(false);
   }
