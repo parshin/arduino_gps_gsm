@@ -1,9 +1,6 @@
 //message format:
 //password#command*time
 //  3425#start*30
-// 1
-// 2
-// 3
 
 #include <MsTimer2.h>
 //#include <SimpleTimer.h>
