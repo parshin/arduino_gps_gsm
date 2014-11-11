@@ -1,6 +1,7 @@
 //message format:
 //password#command*time
 //  3425#start*30
+//
 
 #include <MsTimer2.h>
 //#include <SimpleTimer.h>
@@ -18,6 +19,7 @@ int onModulePin = 2;
 int heater = 13;
 boolean logg = true;
 boolean first_loop = true;
+boolean nospd = false; // false = send data if speed > 5
 unsigned long prevMillis = 0;
 unsigned long currMillis;
 
@@ -57,12 +59,18 @@ void setup() {
     debug.println("Connecting to the GSM network...");
   }
 
+  // waiting GSM registration
   while(sendATcommand2("AT+CREG?", "+CREG: 0,1", "+CREG: 0,5", 1000) == 0);
   
+  // Calling line identification presentation. 1: enable 
   Serial.println("AT+CLIP=1");
   delay(1000);
+  
+  // Select SMS message format. 1: text mode
   Serial.println("AT+CMGF=1");
   delay(1000);
+  
+  // New SMS message indication.
   Serial.println("AT+CNMI=2,2,0,0,0");
   delay(1000);
 
@@ -70,7 +78,8 @@ void setup() {
     debug.println("Connected to the GSM network...");
   }
   
-  // -->
+  // deliting SMS messages
+  while(sendATcommand2("AT+CMGD=1,4", "OK", "OK", 2000) == 0);
 
   // GPS
   if (logg) {
@@ -155,18 +164,20 @@ int8_t sendATcommand2(char* ATcommand, char* expected_answer1, char* expected_an
 void InitGPRS() { 
 
   if (logg) {debug.println("AT&k3 - Hardware flow control activation.");}
+  // Flow control option. 3: Enable bi-directional hardware flow control.
   Serial.println("AT&k3");
-  delay(1000); 
+  delay(1000);
   getSerialChars();
 
+  // GPRS Connection Configuration.
   if (logg) {debug.println("AT+KCNXCFG - Setting GPRS paraameters (APN, login...).");}
-  
   while(sendATcommand2("AT+KCNXCFG=0,\"GPRS\",\"internet\",\"\",\"\",\"0.0.0.0\",\"0.0.0.0\",\"0.0.0.0\"", "OK", "OK", 2000) == 0);
-  
-  if (logg) {debug.println("AT+KUDPCFG - Creating a new UDP socket."); } 
+
+  // UDP Connection Configuration
+  if (logg) {debug.println("AT+KUDPCFG - Creating a new UDP socket."); }
   while(sendATcommand2("AT+KUDPCFG=0,0", "OK", "OK", 4000) == 0);
   
-  if (logg) {debug.println("GPRS initiated!");}  
+  if (logg) {debug.println("GPRS initiated!");}
 
 }
 
@@ -209,6 +220,9 @@ void loop() {
     if (command == "int") {
       SendGPSDataToServer(true);
     }
+    if (command == "nospd") {
+      nospd = !nospd;
+    }
     
     deleteAllMsgs();
   }
@@ -225,9 +239,9 @@ void loop() {
       MsTimer2::set(1200000, HeaterStop);
       MsTimer2::start();
       //timer.setTimeout(1200000, HeaterStop);
-      if (logg) {debug.println("start on ring 20 min.");}
+      if (logg) {debug.println("start by ring for 20 min.");}
       delay(1000);
-      Serial.println("ATH");              // disconnect the call
+      Serial.println("ATH"); // disconnect the call
     }
   }
   //timer.run();
@@ -238,9 +252,9 @@ void loop() {
     first_loop = false;
   }
   
-  if (currMillis - prevMillis > 30000) {
+  if (currMillis - prevMillis > 60000) {
     prevMillis = currMillis;
-    SendGPSDataToServer(false);
+    SendGPSDataToServer(nospd);
   }
 }
 
@@ -260,7 +274,7 @@ void HeaterStart() {
 void HeaterStop() {
   digitalWrite(heater, LOW);
   MsTimer2::stop();
-  if (logg) {debug.println("Heater stop.");}
+  if (logg) {debug.println("Heater stopped.");}
 
 //  Serial.print("AT+CMGS=\"");
 //  Serial.print(phone_number);
@@ -355,7 +369,7 @@ void sendSMSGPS() {
   Serial.println("");//
 
   delay(500);
-  Serial.write(0x1A);       //sends ++
+  Serial.write(0x1A); //sends ++
   Serial.write(0x0D);
   Serial.write(0x0A);
 }
@@ -365,39 +379,28 @@ void SendGPSDataToServer(boolean nospd) {
 
   GetGPSData(gps);
 
-  nospd = true;
-  
   if (spd < 5 && !nospd) {
-    if (logg) {debug.println("speed is less then 5 km/h");} 
+    if (logg) {debug.println("Data didn't send. Speed is less 5 km/h");} 
     prevMillis = millis();
     return;
   }
   
-  if (logg) {debug.println("trying connect to server...");} 
-  //if (logg) {debug.println("AT+KUDPSND..."); }
-//  Serial.print("AT+KUDPSND=1,");
-//  Serial.write(34);
-//  Serial.print("87.254.138.72");
-//  Serial.write(34);
-//  Serial.print(",30080");
-//  Serial.println(",70");
-//  delay(4000);
-//  getSerialChars();
+  if (logg) {debug.println("Connecting to server...");} 
 
-  while(sendATcommand2("AT+KUDPSND=1,\"87.254.138.72\",30080,70", "OK", "CONNECT", 4000) == 0);
+  while(sendATcommand2("AT+KUDPSND=1,\"87.254.138.72\",8186,70", "OK", "CONNECT", 4000) == 0);
 
-  if (logg) {debug.println("sending udp data..."); }
-  Serial.print("GET /test.php?lat=");
+  if (logg) {debug.println("sending data..."); }
+  Serial.print("lat=");
   Serial.print(flat,6);
-  Serial.print("&lon=");
+  Serial.print(";lon=");
   Serial.print(flon,6);
-  Serial.print("&cou=");
+  Serial.print(";cou=");
   Serial.print(cou);
-  Serial.print("&alt=");
+  Serial.print(";alt=");
   Serial.print(alt);
-  Serial.print("&spd=");
-  Serial.print(spd);
-  Serial.println(" HTTP/1.0");
+  Serial.print(";spd=");
+  Serial.println(spd);
+  
   Serial.write(10);
   Serial.write(13);
   Serial.print("--EOF--Pattern--");
@@ -416,7 +419,7 @@ void SendGPSDataToServer(boolean nospd) {
 //  getSerialChars();
 
   prevMillis = millis();
-  if (logg) {debug.println("data sending complete.");}
+  if (logg) {debug.println("data sent.");}
 }
 
 //**************************************************************
