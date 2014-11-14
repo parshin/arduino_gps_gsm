@@ -2,12 +2,17 @@
 //password#command*time
 //  3425#start*30
 
-#include <MsTimer2.h>
+//#include <MsTimer2.h>
+//#include "Timer.h"
 #include <SoftwareSerial.h>
 #include <TinyGPS.h>
 #define maxLength 256
 
 int8_t answer;
+
+//Timer t;
+long previousMillis = 0; 
+long interval = 60000;
 
 char data[maxLength];
 char phone_number[]="+79222620280";
@@ -77,6 +82,7 @@ void setup() {
 //  MsTimer2::set(10000, SendGPSDataToServer);
 //  MsTimer2::start();
 //  delay(3000);
+//  t.every(10000, SendGPSDataToServer);
   
   debug.println("Done!");
 
@@ -88,7 +94,13 @@ void loop() {
   checksms();
   checkinccall();
   delay(1000);
-  //t.update();
+  
+  unsigned long currentMillis = millis();
+  
+  if(currentMillis - previousMillis > interval) {
+    previousMillis = currentMillis;   
+    SendGPSDataToServer();
+  }
 }
 
 //*******************************************************************************************************************************
@@ -190,7 +202,7 @@ void checksms(){
       sendSMSGPS();
     }
     if (strstr(data, "3425#int") != NULL ) {
-      SendGPSDataToServer();
+      SendGPSDataToServerNoSpd();
     }
     if (strstr(data, "3425#nospd") != NULL ) {
       nospd = !nospd;
@@ -352,26 +364,21 @@ void sendSMSGPS() {
 }
 
 //*******************************************************************************************************************************
-void SendGPSDataToServer() {
-
-  GetGPSData(gps);
-
-  if (spd < 5 && !nospd) {
-    return;
-  }
+void SendGPSDataToServerNoSpd() {
   
+  delay(500);
   debug.println("Creating a new UDP socket...");
-  if (sendATcommand2("AT+KUDPCFG=0,0", "OK", "OK", 60000) == 0) {
+  if (sendATcommand2("AT+KUDPCFG=0,0", "OK", "OK", 180000) == 0) {
      debug.println("Error creating UDP socket.");
      return; 
   }
-
+  delay(500);
   debug.println("Connecting to server..."); 
-  //while(sendATcommand2("AT+KUDPSND=1,\"87.254.138.72\",8186,70", "OK", "CONNECT", 4000) == 0);
   if (sendATcommand2("AT+KUDPSND=1,\"87.254.138.72\",8186,70", "CONNECT", "OK", 10000) == 0) {
     return;
   }
-
+  delay(500);
+  
   debug.println("Sending data...");
   Serial.print("lat=");
   Serial.print(flat,6);
@@ -387,8 +394,9 @@ void SendGPSDataToServer() {
   Serial.write(10);
   Serial.write(13);
   Serial.print("--EOF--Pattern--");
-  delay(100);
+  delay(500);
   Serial.println();
+  delay(500);
   getSerialChars();
 
 //  if (logg) {debug.println("AT+KUDPRCV...");}
@@ -403,6 +411,19 @@ void SendGPSDataToServer() {
 
   //prevMillis = millis();
   debug.println("data sent.");
+}
+
+//*******************************************************************************************************************************
+void SendGPSDataToServer() {
+
+  GetGPSData(gps);
+  
+  if (spd < 5 && !nospd) {
+    return;
+  }
+  
+  SendGPSDataToServerNoSpd();
+
 }
 
 //*******************************************************************************************************************************
