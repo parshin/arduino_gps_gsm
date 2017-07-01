@@ -6,7 +6,6 @@
 //#include "Timer.h"
 #include <SoftwareSerial.h>
 #include <TinyGPS.h>
-#define maxLength 256
 
 int8_t answer;
 
@@ -14,7 +13,7 @@ int8_t answer;
 long previousMillis = 0; 
 long interval = 60000;
 
-char data[maxLength];
+char data[256];
 char phone_number[]="+79222620280";
 int x;
 int onModulePin = 2;
@@ -30,7 +29,7 @@ int alt, cou, spd;
 TinyGPS gps;
 
 SoftwareSerial nss(9, 8); // GPS
-SoftwareSerial debug = SoftwareSerial(11, 10); // debug
+SoftwareSerial debug = SoftwareSerial(11, 10); // debugser  
 
 //*******************************************************************************************************************************
 void setup() {
@@ -52,7 +51,7 @@ void setup() {
   debug.println("Connecting to the GSM network...");
 
   // waiting GSM registration
-  while(sendATcommand2("AT+CREG?", "+CREG: 0,1", "+CREG: 0,5", 30000) == 0);
+  while(sendATcommand2("AT+CREG?", "+CREG: 0,1", "+CREG: 0,1", 30000) == 0);
   
   // Calling line identification presentation. 1: enable 
   while(sendATcommand2("AT+CLIP=1", "OK", "OK", 1000) == 0);
@@ -63,7 +62,7 @@ void setup() {
   // New SMS message indication.
   while(sendATcommand2("AT+CNMI=2,2,0,0,0", "OK", "OK", 1000) == 0);
 
-  debug.println("Connected to the GSM network...");
+  debug.println("Connected to GSM network...");
     
   // deliting SMS messages
   while(sendATcommand2("AT+CMGD=1,4", "OK", "OK", 2000) == 0);
@@ -182,7 +181,7 @@ void InitGPRS() {
   while(sendATcommand2("AT+KCNXCFG=0,\"GPRS\",\"internet\",\"\",\"\",\"0.0.0.0\",\"0.0.0.0\",\"0.0.0.0\"", "OK", "OK", 2000) == 0);
 
   // UDP Connection Configuration
-  //if (logg) {debug.println("AT+KUDPCFG - Creating a new UDP socket."); }
+  //debug.println("AT+KUDPCFG - Creating a new UDP socket.");
   //while(sendATcommand2("AT+KUDPCFG=0,0", "OK", "OK", 4000) == 0);
   
   debug.println("GPRS initiated!");
